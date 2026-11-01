@@ -156,3 +156,4 @@ ON attendance_records(attendance_session_id)
 WHERE status = 'absent';
 
 COMMIT;Add initial PostgreSQL database schema
+Correct initial PostgreSQL schema migration
