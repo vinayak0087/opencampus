@@ -23,15 +23,11 @@ function getJwtConfig() {
   );
 
   if (!secret || new TextEncoder().encode(secret).length < 32) {
-    throw new Error(
-      "JWT_SECRET must contain at least 32 bytes"
-    );
+    throw new Error("JWT_SECRET must contain at least 32 bytes");
   }
 
   if (!issuer || !audience) {
-    throw new Error(
-      "JWT_ISSUER and JWT_AUDIENCE are required"
-    );
+    throw new Error("JWT_ISSUER and JWT_AUDIENCE are required");
   }
 
   if (!Number.isSafeInteger(minutes) || minutes <= 0) {
@@ -48,6 +44,48 @@ function getJwtConfig() {
   };
 }
 
+export async function createInstitutionSelectionToken(
+  userId: string
+): Promise<string> {
+  const config = getJwtConfig();
+
+  return new SignJWT({
+    purpose: "institution_selection"
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuer(config.issuer)
+    .setAudience(config.audience)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(config.secret);
+}
+
+export async function verifyInstitutionSelectionToken(
+  token: string
+): Promise<string> {
+  const config = getJwtConfig();
+
+  const { payload } = await jwtVerify(
+    token,
+    config.secret,
+    {
+      issuer: config.issuer,
+      audience: config.audience,
+      algorithms: ["HS256"]
+    }
+  );
+
+  if (
+    typeof payload.sub !== "string" ||
+    payload.purpose !== "institution_selection"
+  ) {
+    throw new Error("Invalid institution selection token");
+  }
+
+  return payload.sub;
+}
+
 export async function createAccessToken(
   userId: string,
   claims: AccessTokenClaims
@@ -55,6 +93,7 @@ export async function createAccessToken(
   const config = getJwtConfig();
 
   return new SignJWT({
+    tokenType: "access",
     institutionId: claims.institutionId,
     membershipId: claims.membershipId,
     role: claims.role
@@ -84,6 +123,7 @@ export async function verifyAccessToken(
   );
 
   if (
+    payload.tokenType !== "access" ||
     typeof payload.sub !== "string" ||
     typeof payload.institutionId !== "string" ||
     typeof payload.membershipId !== "string" ||
