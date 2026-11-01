@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Institution {
+model Institution { memberships InstitutionMembership[]
   id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name              String
   slug              String             @unique
@@ -179,4 +179,36 @@ model AttendanceRecord {
 
   @@unique([attendanceSessionId, studentId])
   @@map("attendance_records")
+}
+
+model User {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String
+  passwordHash    String                  @map("password_hash")
+  fullName        String                  @map("full_name")
+  isPlatformAdmin Boolean                 @default(false) @map("is_platform_admin")
+  accountStatus   String                  @default("active") @map("account_status")
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  memberships     InstitutionMembership[]
+
+  @@map("users")
+}
+
+model InstitutionMembership {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  institutionId    String      @map("institution_id") @db.Uuid
+  departmentId     String?     @map("department_id") @db.Uuid
+  role             String
+  membershipStatus String      @default("active") @map("membership_status")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user             User        @relation(fields: [userId], references: [id])
+  institution      Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([userId, institutionId, role])
+  @@index([userId, membershipStatus])
+  @@index([institutionId, role, membershipStatus])
+  @@map("institution_memberships")
 }
