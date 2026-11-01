@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 const passwordSchema = z
@@ -18,7 +19,7 @@ export const loginSchema = z.object({
 }).strict();
 
 export const selectInstitutionSchema = z.object({
-  institutionId: z.string().uuid("Invalid institution ID")
+  membershipId: z.string().uuid("Invalid membership ID")
 }).strict();
 
 export type LoginInput = z.infer<typeof loginSchema>;
