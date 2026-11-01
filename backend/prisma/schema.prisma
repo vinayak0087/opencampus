@@ -1,0 +1,182 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Institution {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  slug              String             @unique
+  timezone          String             @default("Asia/Kolkata")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  departments       Department[]
+  academicYears     AcademicYear[]
+  classSections     ClassSection[]
+  students          Student[]
+  faculty           Faculty[]
+  subjects          Subject[]
+  enrollments       StudentEnrollment[]
+  attendanceSessions AttendanceSession[]
+  attendanceRecords AttendanceRecord[]
+
+  @@map("institutions")
+}
+
+model Department {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String       @map("institution_id") @db.Uuid
+  name           String
+  code           String
+  programmeType String       @default("unspecified") @map("programme_type")
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  classSections  ClassSection[]
+  students       Student[]
+  faculty        Faculty[]
+  subjects       Subject[]
+
+  @@unique([institutionId, code])
+  @@unique([id, institutionId])
+  @@map("departments")
+}
+
+model AcademicYear {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String       @map("institution_id") @db.Uuid
+  label          String
+  startDate      DateTime     @map("start_date") @db.Date
+  endDate        DateTime     @map("end_date") @db.Date
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  classSections  ClassSection[]
+
+  @@unique([institutionId, label])
+  @@unique([id, institutionId])
+  @@map("academic_years")
+}
+
+model ClassSection {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String       @map("institution_id") @db.Uuid
+  departmentId   String       @map("department_id") @db.Uuid
+  academicYearId String       @map("academic_year_id") @db.Uuid
+  programmeName  String       @map("programme_name")
+  studyYear      Int          @map("study_year") @db.SmallInt
+  sectionName    String       @default("A") @map("section_name")
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  department     Department   @relation(fields: [departmentId, institutionId], references: [id, institutionId])
+  academicYear   AcademicYear @relation(fields: [academicYearId, institutionId], references: [id, institutionId])
+  enrollments    StudentEnrollment[]
+  attendanceSessions AttendanceSession[]
+
+  @@unique([id, institutionId])
+  @@map("class_sections")
+}
+
+model Student {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId     String             @map("institution_id") @db.Uuid
+  departmentId      String             @map("department_id") @db.Uuid
+  admissionNumber   String             @map("admission_number")
+  fullName          String             @map("full_name")
+  institutionalEmail String?           @map("institutional_email")
+  studentStatus     String             @default("active") @map("student_status")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  institution       Institution        @relation(fields: [institutionId], references: [id])
+  department        Department         @relation(fields: [departmentId, institutionId], references: [id, institutionId])
+  enrollments       StudentEnrollment[]
+  attendanceRecords AttendanceRecord[]
+
+  @@unique([institutionId, admissionNumber])
+  @@unique([id, institutionId])
+  @@map("students")
+}
+
+model Faculty {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId     String             @map("institution_id") @db.Uuid
+  departmentId      String             @map("department_id") @db.Uuid
+  staffCode         String             @map("staff_code")
+  fullName          String             @map("full_name")
+  institutionalEmail String?           @map("institutional_email")
+  institution       Institution        @relation(fields: [institutionId], references: [id])
+  department        Department         @relation(fields: [departmentId, institutionId], references: [id, institutionId])
+  attendanceSessions AttendanceSession[]
+
+  @@unique([institutionId, staffCode])
+  @@unique([id, institutionId])
+  @@map("faculty")
+}
+
+model Subject {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId     String             @map("institution_id") @db.Uuid
+  departmentId      String             @map("department_id") @db.Uuid
+  subjectCode       String             @map("subject_code")
+  subjectName       String             @map("subject_name")
+  institution       Institution        @relation(fields: [institutionId], references: [id])
+  department        Department         @relation(fields: [departmentId, institutionId], references: [id, institutionId])
+  enrollments       StudentEnrollment[]
+  attendanceSessions AttendanceSession[]
+
+  @@unique([institutionId, subjectCode])
+  @@unique([id, institutionId])
+  @@map("subjects")
+}
+
+model StudentEnrollment {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String       @map("institution_id") @db.Uuid
+  studentId      String       @map("student_id") @db.Uuid
+  classSectionId String       @map("class_section_id") @db.Uuid
+  subjectId      String?      @map("subject_id") @db.Uuid
+  enrolledFrom   DateTime     @default(now()) @map("enrolled_from") @db.Date
+  enrolledUntil  DateTime?    @map("enrolled_until") @db.Date
+  institution    Institution  @relation(fields: [institutionId], references: [id])
+  student        Student      @relation(fields: [studentId, institutionId], references: [id, institutionId])
+  classSection   ClassSection @relation(fields: [classSectionId, institutionId], references: [id, institutionId])
+  subject        Subject?     @relation(fields: [subjectId, institutionId], references: [id, institutionId])
+
+  @@map("student_enrollments")
+}
+
+model AttendanceSession {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId  String       @map("institution_id") @db.Uuid
+  classSectionId String       @map("class_section_id") @db.Uuid
+  subjectId      String       @map("subject_id") @db.Uuid
+  facultyId      String       @map("faculty_id") @db.Uuid
+  attendanceDate DateTime     @map("attendance_date") @db.Date
+  periodNumber   Int          @map("period_number") @db.SmallInt
+  sessionStatus  String       @default("open") @map("session_status")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  institution    Institution  @relation(fields: [institutionId], references: [id])
+  classSection   ClassSection @relation(fields: [classSectionId, institutionId], references: [id, institutionId])
+  subject        Subject      @relation(fields: [subjectId, institutionId], references: [id, institutionId])
+  faculty        Faculty      @relation(fields: [facultyId, institutionId], references: [id, institutionId])
+  records        AttendanceRecord[]
+
+  @@unique([classSectionId, subjectId, attendanceDate, periodNumber])
+  @@unique([id, institutionId])
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId      String           @map("institution_id") @db.Uuid
+  attendanceSessionId String          @map("attendance_session_id") @db.Uuid
+  studentId          String           @map("student_id") @db.Uuid
+  status             String
+  remarks            String?
+  markedAt           DateTime         @default(now()) @map("marked_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  institution        Institution      @relation(fields: [institutionId], references: [id])
+  attendanceSession  AttendanceSession @relation(fields: [attendanceSessionId, institutionId], references: [id, institutionId])
+  student            Student          @relation(fields: [studentId, institutionId], references: [id, institutionId])
+
+  @@unique([attendanceSessionId, studentId])
+  @@map("attendance_records")
+}
