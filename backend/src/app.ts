@@ -64,4 +64,3 @@ app.use(
 );
 
 export default app;
-Register authentication API routes
