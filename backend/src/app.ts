@@ -7,6 +7,8 @@ import express, {
 import cors from "cors";
 import helmet from "helmet";
 
+import authRoutes from "./modules/auth/auth.routes.js";
+
 const app = express();
 
 app.disable("x-powered-by");
@@ -33,6 +35,10 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
+// Authentication API
+app.use("/api/auth", authRoutes);
+
+// 404 handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
@@ -40,6 +46,7 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
+// Global error handler
 app.use(
   (
     error: Error,
