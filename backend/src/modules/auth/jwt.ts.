@@ -1,0 +1,101 @@
+
+import { SignJWT, jwtVerify } from "jose";
+
+export interface AccessTokenClaims {
+  institutionId: string;
+  membershipId: string;
+  role: string;
+}
+
+export interface VerifiedAccessToken {
+  userId: string;
+  institutionId: string;
+  membershipId: string;
+  role: string;
+}
+
+function getJwtConfig() {
+  const secret = process.env.JWT_SECRET;
+  const issuer = process.env.JWT_ISSUER;
+  const audience = process.env.JWT_AUDIENCE;
+  const minutes = Number(
+    process.env.JWT_ACCESS_TOKEN_MINUTES
+  );
+
+  if (!secret || new TextEncoder().encode(secret).length < 32) {
+    throw new Error(
+      "JWT_SECRET must contain at least 32 bytes"
+    );
+  }
+
+  if (!issuer || !audience) {
+    throw new Error(
+      "JWT_ISSUER and JWT_AUDIENCE are required"
+    );
+  }
+
+  if (!Number.isSafeInteger(minutes) || minutes <= 0) {
+    throw new Error(
+      "JWT_ACCESS_TOKEN_MINUTES must be a positive integer"
+    );
+  }
+
+  return {
+    secret: new TextEncoder().encode(secret),
+    issuer,
+    audience,
+    minutes
+  };
+}
+
+export async function createAccessToken(
+  userId: string,
+  claims: AccessTokenClaims
+): Promise<string> {
+  const config = getJwtConfig();
+
+  return new SignJWT({
+    institutionId: claims.institutionId,
+    membershipId: claims.membershipId,
+    role: claims.role
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuer(config.issuer)
+    .setAudience(config.audience)
+    .setIssuedAt()
+    .setExpirationTime(`${config.minutes}m`)
+    .sign(config.secret);
+}
+
+export async function verifyAccessToken(
+  token: string
+): Promise<VerifiedAccessToken> {
+  const config = getJwtConfig();
+
+  const { payload } = await jwtVerify(
+    token,
+    config.secret,
+    {
+      issuer: config.issuer,
+      audience: config.audience,
+      algorithms: ["HS256"]
+    }
+  );
+
+  if (
+    typeof payload.sub !== "string" ||
+    typeof payload.institutionId !== "string" ||
+    typeof payload.membershipId !== "string" ||
+    typeof payload.role !== "string"
+  ) {
+    throw new Error("Invalid access token claims");
+  }
+
+  return {
+    userId: payload.sub,
+    institutionId: payload.institutionId,
+    membershipId: payload.membershipId,
+    role: payload.role
+  };
+}
