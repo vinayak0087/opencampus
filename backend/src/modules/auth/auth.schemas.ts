@@ -19,6 +19,9 @@ export const loginSchema = z.object({
 }).strict();
 
 export const selectInstitutionSchema = z.object({
+  institutionId: z.string().uuid("Invalid institution ID")
+}).strict();
+
   institutionId: z
     .string()
     .uuid("Invalid institution ID")
